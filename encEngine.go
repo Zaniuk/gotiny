@@ -10,6 +10,10 @@ import (
 type encEng func(*Encoder, unsafe.Pointer) //编码器
 
 var (
+	// rt2encEng is a map that associates Go types with their corresponding encoding functions.
+	// It uses the reflect.Type as the key and an encEng function as the value.
+	// The map includes encoding functions for various primitive types, slices, and structs.
+	// The encIgnore function is used for types that should be ignored during encoding.
 	rt2encEng = map[reflect.Type]encEng{
 		reflect.TypeFor[bool]():       encBool,
 		reflect.TypeFor[int]():        encInt,
@@ -34,6 +38,9 @@ var (
 		reflect.TypeOf(nil):           encIgnore,
 	}
 
+	// encEngines is an array of encEng functions indexed by reflect.Kind.
+	// Each entry in the array corresponds to a specific Go type and its associated encoding function.
+	// The encoding functions are used to serialize values of the respective types.
 	encEngines = [...]encEng{
 		reflect.Bool:       encBool,
 		reflect.Int:        encInt,
@@ -57,11 +64,27 @@ var (
 	encLock sync.RWMutex
 )
 
+// UnusedUnixNanoEncodeTimeType removes the encoding and decoding engine
+// for the time.Time type from the rt2encEng and rt2decEng maps, respectively.
+// This function is used to disable the encoding and decoding of time.Time
+// values using UnixNano format.
 func UnusedUnixNanoEncodeTimeType() {
 	delete(rt2encEng, reflect.TypeOf((*time.Time)(nil)).Elem())
 	delete(rt2decEng, reflect.TypeOf((*time.Time)(nil)).Elem())
 }
 
+// getEncEngine retrieves or builds an encoding engine for the given reflect.Type.
+// It first attempts to retrieve the engine from a cache using a read lock.
+// If the engine is not found in the cache, it acquires a write lock, builds the engine,
+// stores it in the cache, and then returns the newly built engine.
+//
+// Parameters:
+//
+//	rt - the reflect.Type for which the encoding engine is to be retrieved or built.
+//
+// Returns:
+//
+//	encEng - the encoding engine associated with the given reflect.Type.
 func getEncEngine(rt reflect.Type) encEng {
 	encLock.RLock()
 	engine := rt2encEng[rt]
@@ -75,6 +98,13 @@ func getEncEngine(rt reflect.Type) encEng {
 	return engine
 }
 
+// buildEncEngine constructs an encoding engine for the given reflect.Type and assigns it to the provided encEng pointer.
+// It first checks if an engine for the type already exists in the cache (rt2encEng).
+// If not, it attempts to implement another serializer for the type.
+// If neither is successful, it builds the engine based on the kind of the type (e.g., Ptr, Array, Slice, Map, Struct, Interface).
+// The function uses deferred calls to recursively build encoding engines for element types as needed.
+// Supported kinds include Ptr, Array, Slice, Map, Struct, and Interface.
+// Unsupported kinds (Chan, Func, UnsafePointer, Invalid) will cause a panic.
 func buildEncEngine(rt reflect.Type, engPtr *encEng) {
 	engine := rt2encEng[rt]
 	if engine != nil {

@@ -5,6 +5,14 @@ import (
 	"unsafe"
 )
 
+// encBool encodes a boolean value into the encoder's buffer.
+// It uses a single bit to represent the boolean value, appending
+// a new byte to the buffer if necessary. If the boolean value is
+// true, the corresponding bit in the buffer is set to 1.
+//
+// Parameters:
+//
+//	v - the boolean value to encode
 func (e *Encoder) encBool(v bool) {
 	if e.boolBit == 0 {
 		e.boolPos = len(e.buf)

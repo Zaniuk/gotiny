@@ -17,11 +17,23 @@ func GetNameByType(rt reflect.Type) string {
 	return string(getName([]byte(nil), rt))
 }
 
+// getName generates a byte slice representing the name of a given reflect.Type,
+// prefixed by the provided byte slice. It handles various kinds of types including
+// pointers, arrays, slices, structs, maps, interfaces, and functions. For unnamed
+// composite types, it recursively constructs the name by appending the appropriate
+// type information. If the type is nil or invalid, it appends "<nil>" to the prefix.
+//
+// Parameters:
+// - prefix: A byte slice to which the type name will be appended.
+// - rt: The reflect.Type for which the name is to be generated.
+//
+// Returns:
+// A byte slice containing the generated name of the type, prefixed by the provided prefix.
 func getName(prefix []byte, rt reflect.Type) []byte {
 	if rt == nil || rt.Kind() == reflect.Invalid {
 		return append(prefix, []byte("<nil>")...)
 	}
-	if rt.Name() == "" { //未命名的，组合类型
+	if rt.Name() == "" { // unnamed, composite types
 		switch rt.Kind() {
 		case reflect.Ptr:
 			return getName(append(prefix, '*'), rt.Elem())

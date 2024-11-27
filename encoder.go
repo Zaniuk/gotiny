@@ -4,11 +4,19 @@ import (
 	"reflect"
 )
 
+// Encoder is a structure that holds the state and buffer for encoding operations.
+// It contains the following fields:
+// - buf: a byte slice that serves as the encoded target array.
+// - off: an integer representing the current offset in the buffer.
+// - boolPos: an integer indicating the index of the next boolean value to be set in the buffer (buf).
+// - boolBit: a byte representing the bit position of the next boolean value to be set in buf[boolPos].
+// - engines: a slice of encEng, which are the encoding engines used for encoding operations.
+// - length: an integer representing the length of the encoded data.
 type Encoder struct {
-	buf     []byte //编码目的数组
+	buf     []byte // encoded target array
 	off     int
-	boolPos int  //下一次要设置的bool在buf中的下标,即buf[boolPos]
-	boolBit byte //下一次要设置的bool的buf[boolPos]中的bit位
+	boolPos int  // the index of the next bool to be set in buf, i.e., buf[boolPos]
+	boolBit byte // the bit position of the next bool to be set in buf[boolPos]
 
 	engines []encEng
 	length  int
@@ -25,7 +33,7 @@ func Marshal(ps ...any) []byte {
 	return NewEncoderWithPtr(ps...).encode(ps...)
 }
 
-// 创建一个编码ps 指向类型的编码器
+// Create an encoder for the types pointed to by ps
 func NewEncoderWithPtr(ps ...any) *Encoder {
 	l := len(ps)
 	engines := make([]encEng, l)
@@ -42,7 +50,7 @@ func NewEncoderWithPtr(ps ...any) *Encoder {
 	}
 }
 
-// 创建一个编码is 类型的编码器
+// Create an encoder for the types of is
 func NewEncoder(is ...any) *Encoder {
 	l := len(is)
 	engines := make([]encEng, l)
@@ -67,7 +75,7 @@ func NewEncoderWithType(ts ...reflect.Type) *Encoder {
 	}
 }
 
-// 入参是要编码值的指针
+// The input parameter is a pointer to the value to be encoded
 func (e *Encoder) encode(is ...any) []byte {
 	engines := e.engines
 	for i := 0; i < len(engines) && i < len(is); i++ {
@@ -76,7 +84,7 @@ func (e *Encoder) encode(is ...any) []byte {
 	return e.reset()
 }
 
-// vs 是持有要编码的值
+// vs holds the values to be encoded
 func (e *Encoder) encodeValue(vs ...reflect.Value) []byte {
 	engines := e.engines
 	for i := 0; i < len(engines) && i < len(vs); i++ {
@@ -85,12 +93,16 @@ func (e *Encoder) encodeValue(vs ...reflect.Value) []byte {
 	return e.reset()
 }
 
-// AppendTo 编码产生的数据将append到buf上
+// AppendTo appends the encoded data to buf
 func (e *Encoder) AppendTo(buf []byte) {
 	e.off = len(buf)
 	e.buf = buf
 }
 
+// reset resets the encoder's buffer and boolean position tracking.
+// It returns the original buffer before the reset.
+// The buffer is truncated to the current offset, and boolean position
+// tracking variables are reset to their initial state.
 func (e *Encoder) reset() []byte {
 	buf := e.buf
 	e.buf = buf[:e.off]

@@ -5,20 +5,46 @@ import (
 	"unsafe"
 )
 
+// Decoder is a structure that holds the state for decoding operations.
+// It contains a buffer, an index to track the next byte to be used,
+// and fields to manage the position and bit of the next boolean value
+// to be read. Additionally, it maintains a collection of decoders
+// and the count of these decoders.
 type Decoder struct {
-	buf     []byte //buf
-	index   int    //下一个要使用的字节在buf中的下标
-	boolPos byte   //下一次要读取的bool在buf中的下标,即buf[boolPos]
-	boolBit byte   //下一次要读取的bool的buf[boolPos]中的bit位
+	buf     []byte // buffer
+	index   int    // index of the next byte to be used in the buffer
+	boolPos byte   // index of the next bool to be read in the buffer, i.e., buf[boolPos]
+	boolBit byte   // bit position of the next bool to be read in buf[boolPos]
 
-	engines []decEng //解码器集合
-	length  int      //解码器数量
+	engines []decEng // collection of decoders
+	length  int      // number of decoders
 }
 
+// Unmarshal decodes the provided byte buffer into the given variables.
+// The variables to decode into are passed as variadic parameters.
+//
+// Parameters:
+//   - buf: The byte buffer to decode.
+//   - is: Variadic parameters representing the variables to decode into.
+//
+// Returns:
+//
+//	The number of bytes read from the buffer.
 func Unmarshal(buf []byte, is ...any) int {
 	return NewDecoderWithPtr(is...).decode(buf, is...)
 }
 
+// NewDecoderWithPtr creates a new Decoder instance with the provided pointers.
+// Each argument must be a pointer type, otherwise the function will panic.
+// The function initializes decoding engines for each provided pointer type.
+//
+// Parameters:
+//
+//	is ...any - A variadic parameter accepting any number of arguments, each of which must be a pointer.
+//
+// Returns:
+//
+//	*Decoder - A pointer to the newly created Decoder instance.
 func NewDecoderWithPtr(is ...any) *Decoder {
 	l := len(is)
 	engines := make([]decEng, l)
@@ -35,6 +61,17 @@ func NewDecoderWithPtr(is ...any) *Decoder {
 	}
 }
 
+// NewDecoder creates a new Decoder instance with the provided input values.
+// It takes a variadic parameter of any type and returns a pointer to a Decoder.
+// The function initializes a slice of decoding engines based on the types of the input values.
+//
+// Parameters:
+//
+//	is ...any - A variadic parameter representing the input values of any type.
+//
+// Returns:
+//
+//	*Decoder - A pointer to the newly created Decoder instance.
 func NewDecoder(is ...any) *Decoder {
 	l := len(is)
 	engines := make([]decEng, l)
@@ -47,6 +84,17 @@ func NewDecoder(is ...any) *Decoder {
 	}
 }
 
+// NewDecoderWithType creates a new Decoder instance with the provided types.
+// It takes a variadic number of reflect.Type arguments and returns a pointer to a Decoder.
+// Each type is used to generate a corresponding decoding engine which is stored in the Decoder.
+//
+// Parameters:
+//
+//	ts - A variadic number of reflect.Type arguments representing the types to decode.
+//
+// Returns:
+//
+//	*Decoder - A pointer to a Decoder instance initialized with decoding engines for the provided types.
 func NewDecoderWithType(ts ...reflect.Type) *Decoder {
 	l := len(ts)
 	des := make([]decEng, l)
