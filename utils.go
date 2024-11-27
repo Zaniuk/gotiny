@@ -19,6 +19,19 @@ func uint64ToFloat64(u uint64) float64 {
 	return *((*float64)(unsafe.Pointer(&u)))
 }
 
+// reverse64Byte reverses the byte order of a 64-bit unsigned integer.
+// It performs a series of bitwise operations to swap the positions of bytes
+// within the 64-bit value, effectively reversing the order of the bytes.
+//
+// For example, if the input is 0x0123456789ABCDEF, the output will be 0xEFCDAB8967452301.
+//
+// Parameters:
+//
+//	u - the 64-bit unsigned integer to be reversed.
+//
+// Returns:
+//
+//	The 64-bit unsigned integer with its byte order reversed.
 func reverse64Byte(u uint64) uint64 {
 	u = (u << 32) | (u >> 32)
 	u = ((u << 16) & 0xFFFF0000FFFF0000) | ((u >> 16) & 0xFFFF0000FFFF)
@@ -35,6 +48,17 @@ func uint32ToFloat32(u uint32) float32 {
 	return *((*float32)(unsafe.Pointer(&u)))
 }
 
+// reverse32Byte reverses the byte order of a 32-bit unsigned integer.
+// It performs a series of bitwise operations to swap the positions of the bytes.
+// For example, if the input is 0x12345678, the output will be 0x78563412.
+//
+// Parameters:
+//
+//	u - the 32-bit unsigned integer to be reversed.
+//
+// Returns:
+//
+//	The 32-bit unsigned integer with reversed byte order.
 func reverse32Byte(u uint32) uint32 {
 	u = (u << 16) | (u >> 16)
 	return ((u << 8) & 0xFF00FF00) | ((u >> 8) & 0xFF00FF)
@@ -93,14 +117,39 @@ type binInter interface {
 	encoding.BinaryUnmarshaler
 }
 
-// 只应该由指针来实现该接口
+// Serializer should only be implemented by pointers
 type Serializer interface {
-	// 编码方法，将对象的序列化结果append到入参数并返回，方法不应该修改入参数值原有的值
+	// Encode method, appends the serialized result of the object to the input parameter and returns it.
+	// The method should not modify the original value of the input parameter.
 	GotinyEncode([]byte) []byte
-	// 解码方法，将入参解码到对象里并返回使用的长度。方法从入参的第0个字节开始使用，并且不应该修改入参中的任何数据
+	// Decode method, decodes the input parameter into the object and returns the length used.
+	// The method starts using the input parameter from the 0th byte and should not modify any data in the input parameter.
 	GotinyDecode([]byte) int
 }
 
+// implementOtherSerializer generates encoding and decoding engines for types that implement
+// custom serialization interfaces. It supports three interfaces: Serializer, encoding.BinaryMarshaler
+// and encoding.BinaryUnmarshaler, and gob.GobEncoder and gob.GobDecoder.
+//
+// Parameters:
+// - rt: The reflect.Type of the type to be serialized.
+//
+// Returns:
+// - encEng: A function that encodes the type into a byte buffer.
+// - decEng: A function that decodes the type from a byte buffer.
+//
+// The function first checks if the type implements the Serializer interface. If so, it generates
+// encoding and decoding functions using the GotinyEncode and GotinyDecode methods.
+//
+// If the type does not implement Serializer, it checks if it implements the encoding.BinaryMarshaler
+// and encoding.BinaryUnmarshaler interfaces. If so, it generates encoding and decoding functions
+// using the MarshalBinary and UnmarshalBinary methods.
+//
+// If the type does not implement the previous interfaces, it checks if it implements the gob.GobEncoder
+// and gob.GobDecoder interfaces. If so, it generates encoding and decoding functions using the GobEncode
+// and GobDecode methods.
+//
+// If the type does not implement any of these interfaces, the function returns nil for both encEng and decEng.
 func implementOtherSerializer(rt reflect.Type) (encEng encEng, decEng decEng) {
 	rtNil := reflect.New(rt).Interface()
 	if _, ok := rtNil.(Serializer); ok {
@@ -156,6 +205,16 @@ func implementOtherSerializer(rt reflect.Type) (encEng encEng, decEng decEng) {
 }
 
 // rt.kind is reflect.struct
+// getFieldType recursively retrieves the types and offsets of the fields of a given struct type.
+// It skips fields that should be ignored and handles nested structs by flattening their fields.
+//
+// Parameters:
+// - rt: The reflect.Type of the struct to analyze.
+// - baseOff: The base offset to add to each field's offset.
+//
+// Returns:
+// - fields: A slice of reflect.Type representing the types of the fields.
+// - offs: A slice of uintptr representing the offsets of the fields.
 func getFieldType(rt reflect.Type, baseOff uintptr) (fields []reflect.Type, offs []uintptr) {
 	for i := 0; i < rt.NumField(); i++ {
 		field := rt.Field(i)

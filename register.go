@@ -135,6 +135,19 @@ func registerType(rt reflect.Type) string {
 	return name
 }
 
+// RegisterName registers a type with a given name in the global type registry.
+// It panics if the name is empty, the type is nil or invalid, or if the name or type
+// is already registered.
+//
+// Parameters:
+//   - name: The name to register the type with. Must be a non-empty string.
+//   - rt: The reflect.Type to register. Must be a non-nil and valid type.
+//
+// Panics:
+//   - If the name is an empty string.
+//   - If the type is nil or invalid.
+//   - If the type is already registered with a different name.
+//   - If the name is already registered with a different type.
 func RegisterName(name string, rt reflect.Type) {
 	if name == "" {
 		panic("attempt to register empty name")
